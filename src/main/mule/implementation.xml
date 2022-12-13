@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd">
+	<flow name="post-account-flow" doc:id="a1c3c8e7-2c7b-42dc-9e7c-4f10ae2d00d5" >
+		<flow-ref doc:name="get-country-name-flow" doc:id="a1329402-83d8-4d07-be3c-826ff3e839b2" name="get-country-name-flow"/>
+		<http:request method="POST" doc:name="Accounts-SFDC-Sapi" doc:id="09703bfa-62ce-4712-9afd-4f7802ab7b1f" url="${http-request.sf-sapi}">
+			<error-mapping sourceType="HTTP:BAD_REQUEST" targetType="SALESFORCE:UPDATE_ERROR" />
+			<reconnect />
+			<http:headers ><![CDATA[#[output application/json
+---
+{
+	"correlationId" : vars.cid,
+	"client_secret" : Mule::p('secure::app.client_secret'),
+	"client_id" : Mule::p('app.client_id')
+	
+}]]]></http:headers>
+		</http:request>
+		<logger level="INFO" doc:name="Log Response" doc:id="e842a411-8b00-451c-81ed-31dce1c431ed" message='#[output application/json&#10;---&#10;{&#10;	correlationId: vars.cid,&#10;	id: payload.items[0].id,&#10;	status: 0,&#10;	message: "Account created successfully"&#10;}]'/>
+	</flow>
+	
+	<flow name="put-account-flow" doc:id="b76f9130-a616-4b59-a487-e04b212b79f5" >
+		<flow-ref doc:name="get-country-name-flow" doc:id="94821009-12cc-4927-9636-079626f87e66" name="get-country-name-flow" />
+		<http:request method="PUT" doc:name="Accounts-SFDC-Sapi" doc:id="4da726e1-d5c8-4de9-b493-4c8f44065152" url="${http-request.sf-sapi}/{accountId}" correlationId="vars.cid">
+			<error-mapping sourceType="HTTP:BAD_REQUEST" targetType="SALESFORCE:UPDATE_ERROR" />
+			<error-mapping sourceType="HTTP:NOT_FOUND" targetType="COUNTRY:INVALID_ISO" />
+			<reconnect />
+			<http:headers><![CDATA[#[output application/json
+---
+{
+	"correlationId" : vars.cid,
+	"client_secret" : Mule::p('secure::app.client_secret'),
+	"client_id" : Mule::p('app.client_id')
+	
+}]]]></http:headers>
+			<http:uri-params><![CDATA[#[output application/java
+---
+{
+	"accountId" : vars.accountId
+}]]]></http:uri-params>
+		</http:request>
+		<logger level="INFO" doc:name="Log Response" doc:id="dcf4e587-adc7-44be-a9fd-bc8e9835664a" message='#[output application/json&#10;---&#10;{&#10;	correlationId: vars.cid,&#10;	id: payload.items[0].id,&#10;	status: 0,&#10;	message: "Account updated successfully"&#10;}]' />
+	</flow>
+	<flow name="delete-account-flow" doc:id="e95e4780-f3f8-4fe3-9ba8-2d073747bd2d" >
+		<http:request method="DELETE" doc:name="Accounts-SFDC-Sapi" doc:id="9446194a-5b80-4fc5-a2ca-fb230c3e1b8e" url="${http-request.sf-sapi}/{accountId}" correlationId="vars.cid">
+			<error-mapping sourceType="HTTP:NOT_FOUND" targetType="COUNTRY:INVALID_ISO" />
+			<error-mapping sourceType="HTTP:BAD_REQUEST" targetType="COUNTRY:INVALID_ISO" />
+			<reconnect />
+			<http:headers><![CDATA[#[output application/json
+---
+{
+	"correlationId" : vars.cid,
+	"client_secret" : Mule::p('secure::app.client_secret'),
+	"client_id" : Mule::p('app.client_id')
+	
+}]]]></http:headers>
+			<http:uri-params><![CDATA[#[output application/java
+---
+{
+	"accountId" : vars.accountId
+}]]]></http:uri-params>
+		</http:request>
+		<logger level="INFO" doc:name="Log Response" doc:id="46add3dc-4757-4b47-b4f6-c42650e1ed64" message='#["Delete Request is successful, correlationId: " ++ vars.cid ++ " , status : 0"]' />
+	</flow>
+	<flow name="get-country-name-flow" doc:id="ce4509e8-c413-4d63-b15d-901980b7adc7" >
+		<ee:transform doc:name="SET CountryIso" doc:id="d8293892-5ee4-43b6-98a7-5db53339beff">
+			<ee:message>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="biso" ><![CDATA[payload.billingAddress.countryIso]]></ee:set-variable>
+				<ee:set-variable variableName="siso" ><![CDATA[payload.shippingAddress.countryIso]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<choice doc:name="Find BillingCountry" doc:id="bf23ebae-598b-4afc-8855-d2165f48478b" >
+			<when expression="#[payload.billingAddress.countryIso == null]">
+				<logger level="INFO" doc:name="Log Status" doc:id="7b401075-a4a7-4449-a13b-bf0cd168fd91" message='#["No Shipping Country Code in the payload"]' />
+			</when>
+			<otherwise>
+				<http:request method="GET" doc:name="First-Country-Lookup-Sapi" doc:id="8ffb33aa-e4a5-4750-8064-002948dbcf83" target="billingCountry" url="${http-request.country-sapi}/{countryIso}" targetValue="#[payload.country]">
+			<error-mapping sourceType="HTTP:NOT_FOUND" targetType="COUNTRY:INVALID_ISO" />
+					<reconnect />
+						<http:headers><![CDATA[#[output application/json
+---
+{
+	"correlationId" : vars.cid,
+	"client_secret" : Mule::p('secure::app.client_secret'),
+	"client_id" : Mule::p('app.client_id')
+}]]]></http:headers>
+					<http:uri-params><![CDATA[#[output application/java
+---
+{
+	"countryIso" : vars.biso
+}]]]></http:uri-params>
+		</http:request>
+			</otherwise>
+		</choice>
+		<choice doc:name="Find Shipping Country" doc:id="3d42ace9-a73d-4aeb-934f-200115226383" >
+			<when expression="#[payload.shippingAddress.countryIso == null]">
+				<logger level="INFO" doc:name="Log Status" doc:id="ca2ce97c-2a8f-4832-a865-d400db4d5b81" message='#["No Shipping Country Code in the payload"]'/>
+			</when>
+			<otherwise >
+				<http:request method="GET" doc:name="First-Country-Lookup-Sapi" doc:id="c36084ef-d611-48a5-b38e-50e3637e4d98" url="${http-request.country-sapi}/{countryIso}" target="shippingCountry" targetValue="#[payload.country]">
+					<error-mapping targetType="COUNTRY:INVALID_ISO" sourceType="HTTP:NOT_FOUND"/>
+					<reconnect />
+					<http:headers ><![CDATA[#[output application/json
+---
+{
+	"correlationId" : vars.cid,
+	"client_secret" : Mule::p('secure::app.client_secret'),
+	"client_id" : Mule::p('app.client_id')
+	
+}]]]></http:headers>
+					<http:uri-params ><![CDATA[#[output application/java
+---
+{
+	'countryIso' : vars.siso
+}]]]></http:uri-params>
+				</http:request>
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="Account Record" doc:id="9c7a66b1-ed37-4c71-a4cf-5baaa4c11355" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+[{
+  "name": payload.name,
+  "email": payload.email,
+  "number": payload.number default "",
+  "phone": payload.phone default "",
+  "fax": payload.fax default "",
+  "billingAddress": {
+    "street": payload.billingAddress.street default "",
+    "city": payload.billingAddress.city default "",
+    "state": payload.billingAddress.state default "",
+    "postalCode": payload.billingAddress.postalCode default "",
+    "country": vars.billingCountry default payload.billingAddress.country default ""
+  },
+  "shippingAddress": {
+    "street": payload.shippingAddress.street default "",
+    "city": payload.shippingAddress.city default "",
+    "state": payload.shippingAddress.state default "",
+    "postalCode": payload.shippingAddress.postalCode default "",
+    "country": vars.billingCountry default payload.shippingAddress.country default ""
+  }
+}]]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>

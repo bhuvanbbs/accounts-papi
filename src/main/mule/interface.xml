@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd ">
+    <apikit:config name="accounts-papi-config" api="resource::3d661517-1a7c-428a-a671-160ec2d12da9:accounts-papi:1.0.4:raml:zip:accounts-papi.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <flow name="accounts-papi-main" doc:id="64760983-774a-4be6-87b0-9853a400efb6">
+        <http:listener path="/*" config-ref="accounts-papi-httpListenerConfig">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body><![CDATA[#[payload]]]></http:body>
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="accounts-papi-config" doc:id="e00f901a-f3ff-402f-88c6-944561c46b15"/>
+    </flow>
+    <flow name="post:\accounts:application\json:accounts-papi-config">
+        <ee:transform doc:name="Set CorrelationId" doc:id="fb2428a3-b47d-41f2-8740-10ced3d18a17">
+            <ee:variables>
+                <ee:set-variable variableName="cid"><![CDATA[attributes.headers.correlationId]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <flow-ref doc:name="post-account-flow" doc:id="f4f479c0-24f0-430d-bf02-a29e3752c788" name="post-account-flow" />
+    </flow>
+    <flow name="put:\accounts\(accountId):application\json:accounts-papi-config">
+        <ee:transform doc:name="Set AccountId" doc:id="fb009d92-bda7-4b4c-830b-a738618d9de0">
+            <ee:variables>
+                <ee:set-variable variableName="accountId"><![CDATA[attributes.uriParams.'accountId']]></ee:set-variable>
+                <ee:set-variable variableName="cid"><![CDATA[attributes.headers.correlationId]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <flow-ref doc:name="put-account-flow" doc:id="6c2e0603-bd7e-4804-ab17-c564ef0120a4" name="put-account-flow" />
+    </flow>
+    <flow name="delete:\accounts\(accountId):accounts-papi-config">
+        <ee:transform doc:name="Set AccountId" doc:id="f22f6437-9c3f-4c86-9a21-ae8a24a82a20">
+            <ee:variables>
+                <ee:set-variable variableName="accountId"><![CDATA[attributes.uriParams.'accountId']]></ee:set-variable>
+                <ee:set-variable variableName="cid"><![CDATA[attributes.headers.correlationId]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <flow-ref doc:name="delete-account-flow" doc:id="cd414d17-7479-4a95-9a91-80ecedd197a2" name="delete-account-flow" />
+    </flow>
+</mule>

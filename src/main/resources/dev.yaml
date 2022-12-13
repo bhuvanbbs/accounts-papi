@@ -1,0 +1,15 @@
+keystore:
+  path: "test.jks"
+  alias: "testkey"
+  pass: "![z+Ig2CMVmpAHIKWAysIa1Q==]"
+ 
+https:
+  port: "8082" 
+
+app:
+  client_id: "c03cf7dd798c48dc903d2493b0121369"
+  client_secret: "![wkFMWgaMWopnVqBuoamPCYeUV+4fga2D7tE3D3O1a792nZhnHJAYhrIV53DutVj0]"
+  
+http-request:
+  country-sapi: "https://first-country-lookup-sapi.us-e2.cloudhub.io/country"
+  sf-sapi: "https://sfdc-accounts-sapi.us-e2.cloudhub.io/accounts"
